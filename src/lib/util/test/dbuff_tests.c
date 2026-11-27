@@ -1275,6 +1275,59 @@ static void test_dbuff_producer_consumer_fixed(void)
 	fr_dbuff_free_talloc(&consumer);
 }
 
+/** A consumer whose producer is extended, with no write after the extension
+ *
+ * The end of a consumer bound with FR_DBUFF_BIND_END_ABS() marks where the
+ * data stops.  An extension adds room for the producer, and does not add
+ * data.  The consumer must therefore see the same data before and after the
+ * extension, whether the extension grows the allocation, or gives back space
+ * which fr_dbuff_shift() freed.
+ *
+ * fr_dbuff_extend_lowat() is called with no write after it when a caller
+ * asks how much room there is, before reading the data to write.  See
+ * fr_tls_connection_recv_room() in src/lib/tls/connection.c.
+ */
+static void test_dbuff_producer_consumer_extend_no_write(void)
+{
+	fr_dbuff_t		consumer, producer;
+	fr_dbuff_uctx_talloc_t	tctx;
+	uint8_t			out[4] = {};
+
+	MEM(fr_dbuff_init_talloc(NULL, &consumer, &tctx, 4, 64));
+	producer = FR_DBUFF_BIND_END_ABS(&consumer);
+	consumer.is_const = 1;
+
+	TEST_CASE("an extension which grows the allocation adds no data");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x01, 0x02) == 2);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);
+	TEST_CHECK(fr_dbuff_extend_lowat(NULL, &producer, 16) >= 16);
+	TEST_CHECK(talloc_array_length(fr_dbuff_buff(&consumer)) > 4);	/* the allocation grew */
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);
+	TEST_MSG("consumer remaining %zu, expected 2", fr_dbuff_remaining(&consumer));
+
+	TEST_CASE("the consumer reads only what was written");
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 2) == 2);
+	TEST_CHECK(out[0] == 0x01 && out[1] == 0x02);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 0);
+
+	TEST_CASE("an extension which gives back shifted space adds no data");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x03) == 1);
+	TEST_CHECK(fr_dbuff_shift(&producer, fr_dbuff_used(&consumer)) == 2);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 1);
+	TEST_CHECK(fr_dbuff_extend_lowat(NULL, &producer, 4) >= 4);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 1);
+	TEST_MSG("consumer remaining %zu, expected 1", fr_dbuff_remaining(&consumer));
+
+	TEST_CASE("a write after the extension is the next data the consumer sees");
+	TEST_CHECK(fr_dbuff_in_bytes(&producer, 0x04) == 1);
+	TEST_CHECK(fr_dbuff_remaining(&consumer) == 2);
+	TEST_CHECK(fr_dbuff_out_memcpy(out, &consumer, 2) == 2);
+	TEST_CHECK(out[0] == 0x03 && out[1] == 0x04);
+
+	consumer.is_const = 0;					/* so the free below is honest */
+	fr_dbuff_free_talloc(&consumer);
+}
+
 TEST_LIST = {
 	/*
 	 *	Basic tests
@@ -1313,6 +1366,7 @@ TEST_LIST = {
 	{ "fr_dbuff_bind_end_abs_extend",		test_dbuff_bind_end_abs_extend },
 	{ "fr_dbuff_producer_consumer_rounds",		test_dbuff_producer_consumer_rounds },
 	{ "fr_dbuff_producer_consumer_fixed",		test_dbuff_producer_consumer_fixed },
+	{ "fr_dbuff_producer_consumer_extend_no_write",	test_dbuff_producer_consumer_extend_no_write },
 	{ "fr_dbuff_init_zero_length",			test_dbuff_init_zero_length },
 
 	TEST_TERMINATOR

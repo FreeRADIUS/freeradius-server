@@ -63,6 +63,18 @@ FR_DBUFF_MOVE_DEF(dbuff_marker, dbuff)
 FR_DBUFF_MOVE_DEF(dbuff_marker, dbuff_marker)
 DIAG_ON(overlength-strings)
 
+/** Iterate over the parents of a dbuff
+ *
+ * The iterator cannot be modified.
+ *
+ * @param[in] _dbuff		to iterate over.
+ * @param[in] _iter		Name of iteration variable.
+ *				Will be declared in the scope of the loop.
+ */
+#define fr_dbuff_foreach_parent(_dbuff, _iter) \
+	for (fr_dbuff_t *_iter = (_dbuff); _iter != NULL; _iter = (_iter)->parent)
+
+
 static inline CC_HINT(always_inline) size_t min(size_t x, size_t y)
 {
 	return x < y ? x : y;
@@ -78,7 +90,6 @@ static inline CC_HINT(always_inline) size_t min(size_t x, size_t y)
  */
 void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
 {
-	fr_dbuff_t		*dbuff_i;
 	uint8_t			*old_buff;	/* Current buff */
 
 	old_buff = dbuff->buff;
@@ -89,7 +100,7 @@ void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
 	 *	offsets in the old buffer... but not
 	 *	past the end of the new buffer.
 	 */
-	for (dbuff_i = dbuff; dbuff_i; dbuff_i = dbuff_i->parent) {
+	fr_dbuff_foreach_parent(dbuff, dbuff_i) {
 		fr_dbuff_marker_t	*m_i;
 
 		dbuff_i->buff = new_buff;
@@ -116,7 +127,6 @@ void fr_dbuff_update(fr_dbuff_t *dbuff, uint8_t *new_buff, size_t new_len)
 size_t fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift)
 {
 	uint8_t		*buff, *end;		/* Current start */
-	fr_dbuff_t	*dbuff_i;
 	size_t		max_shift = shift;
 
 	CHECK_DBUFF_INIT(dbuff);
@@ -130,7 +140,7 @@ size_t fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift)
 	 *	or current pointers of markers of dbuff and its ancestors.
 	 *	(We're also constrained by the requested shift count.)
 	 */
-	for (dbuff_i = dbuff; dbuff_i; dbuff_i = dbuff_i->parent) {
+	fr_dbuff_foreach_parent(dbuff, dbuff_i) {
 		fr_dbuff_marker_t *m_i;
 
 		max_shift = min(max_shift, dbuff_i->p - buff);
@@ -150,7 +160,7 @@ size_t fr_dbuff_shift(fr_dbuff_t *dbuff, size_t shift)
 	 *	For d->end, d->buff <= d->p - shift, and d->p shouldn't exceed d->end,
 	 *	so d->p - shift <= d->end - shift, hence d->buff <= d->end - shift.
 	 */
-	for (dbuff_i = dbuff; dbuff_i; dbuff_i = dbuff_i->parent) {
+	fr_dbuff_foreach_parent(dbuff, dbuff_i) {
 		fr_dbuff_marker_t	*m_i;
 		uint8_t			*start = dbuff_i->start;
 
@@ -310,6 +320,18 @@ size_t _fr_dbuff_extend_talloc(fr_dbuff_t *dbuff, size_t extension)
 	}
 
 	(void)fr_dbuff_update(dbuff, new_buff, nlen);	/* Shouldn't fail as we're extending */
+
+	/*
+	 *	When dbuffs are linked in a producer / consumer pair, we can't just change the size of this dbuff.
+	 *
+	 *	After fr_dbuff_update() sets `end` in every ancestor to the end of the new buffer, we have to
+	 *	check for FR_DBUFF_ADV_PARENT_END, and if so, reset the parents `end` to the childs `p`.
+	 */
+	fr_dbuff_foreach_parent(dbuff, dbuff_i) {
+		if (!dbuff_i->parent || !(dbuff_i->adv_parent & FR_DBUFF_ADV_PARENT_END)) continue;
+
+		_fr_dbuff_set_recurse(dbuff_i->parent, dbuff_i->adv_parent, dbuff_i->p);
+	}
 
 	return reclaimed + elen;
 }
