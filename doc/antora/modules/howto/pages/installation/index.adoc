@@ -1,6 +1,6 @@
-= Install and Upgrade
+= Installation
 
-FreeRADIUS is available from many locations. Select one of the options
+FreeRADIUS is available from many locations either as a fresh install or upgrade (minore version). Select one of the options
 below to begin installing your server:
 
 * xref:howto:installation/packages.adoc[Inbridge Networks packages]
