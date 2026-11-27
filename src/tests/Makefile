@@ -190,14 +190,35 @@ config/eap-test: $(RADDB_PATH)mods-available/eap config/eap-test-inner-tunnel co
 	     -e 's/cipher_list = "DEFAULT"/cipher_list = "DEFAULT${SECLEVEL}"/' \
 		 < $< > $@
 
+#
+#  Wait for the server to exit, so that it no longer holds the port,
+#  and so that it doesn't remove the PID file of the next server as
+#  it exits.
+#
+RADIUSD_WAIT = i=0; while kill -0 $$pid >/dev/null 2>&1 && [ $$i -lt 100 ]; do sleep 0.1; i=`expr $$i + 1`; done
+
+#
+#  Start the server, once, before any of the tests which use it.  A
+#  server which is still running is stopped first.  This is phony, and
+#  it removes any PID file which is left, so that a PID file from an
+#  earlier run can't stop the server from being started.  radiusd only
+#  returns once the server is ready, so the tests can start as soon as
+#  this is done.
+#
+.PHONY: radiusd.pid
 radiusd.pid: test.conf
+	${Q}$(MAKE) --no-print-directory radiusd.kill >/dev/null 2>&1 || true
+	${Q}rm -f $(TEST_PATH)/radiusd.pid
 	${Q}rm -rf $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log $(TEST_PATH)/tlscache
 	${Q}mkdir -p $(TEST_PATH)/tlscache
 	${Q}printf "Starting server... "
 	${Q}if ! $(RADIUSD_BIN) -Pxxxxml $(TEST_PATH)/radius.log -d ${top_builddir}/src/tests -n test -i 127.0.0.1 -p $(PORT) -D $(DICT_PATH); then \
 		echo "failed"; \
+		grep 'Error: ' "$(TEST_PATH)/radius.log"; \
 		echo "Last log entries were:"; \
 		tail -n 20 "$(TEST_PATH)/radius.log"; \
+		$(call test_record,eap,radiusd-start,FAIL,$(TEST_PATH)/radius.log); \
+		exit 1; \
 	fi
 	${Q}echo "ok"
 	${Q}echo "radiusd logging to $(TEST_PATH)/radius.log"
@@ -208,7 +229,8 @@ radiusd.pid: test.conf
 radiusd.kill:
 	${Q}if [ -f radiusd.pid ]; then \
 	    ret=0; \
-	    if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+	    pid=`cat $(TEST_PATH)/radiusd.pid`; \
+	    if ! ps $$pid >/dev/null 2>&1; then \
 		rm -f radiusd.pid; \
 		echo "FreeRADIUS terminated during test"; \
 		echo "GDB output was:"; \
@@ -217,9 +239,10 @@ radiusd.kill:
 		tail -n 20 $(TEST_PATH)/radius.log; \
 		ret=1; \
 	    fi; \
-		if ! kill -TERM `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+		if ! kill -TERM $$pid >/dev/null 2>&1; then \
 		    ret=1; \
 		fi; \
+		$(RADIUSD_WAIT); \
 		exit $$ret; \
 	fi
 	${Q}rm -f radiusd.pid
@@ -294,7 +317,7 @@ $(BUILD_PATH)/tests/eap/%.ok: MAC = $(shell printf '%s' $(basename $(notdir $@))
 $(BUILD_PATH)/tests/eap/%.ok: CMD =  $(EAPOL_TEST) -c $< -p $(PORT) -s $(SECRET) -M $(MAC) $(if $(NO_MPPE),-n)
 $(BUILD_PATH)/tests/eap/%.ok: LOG =  $(patsubst %.ok,%,$@).log
 
-$(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | radiusd.kill $(BUILD_PATH)/tests/eap radiusd.pid radiusd.kill
+$(BUILD_PATH)/tests/eap/%.ok: $(top_builddir)/src/tests/%.conf | $(BUILD_PATH)/tests/eap radiusd.pid
 	${Q}printf 'EAPOL_TEST %s ' $(notdir $(patsubst %.conf,%,$<))
 	${Q}if ! $(CMD) > $(LOG) 2>&1; then \
 		echo " - " FAILED - command failed; \
@@ -323,12 +346,12 @@ ifneq "$(prefix)" ""
 #  insert an OpenSSL cipher configuration line by cloning "password" and editing it.
 #
 define EAP_TLS_CONFIG
-$(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf
+$(BUILD_PATH)/tests/eap/${1}-${2}.conf: $(top_builddir)/src/tests/${1}.conf | $(BUILD_PATH)/tests/eap
 	${Q}sed -e 's/phase1="/phase1="$(subst $(subst .,_,${2})=1,$(subst .,_,${2})=0,$(EAP_TLS_DISABLE_STRING)) /' \
 	     -e  '/password/s/^//p; /password/s/^.*/        openssl_ciphers="DEFAULT${SECLEVEL}"/' \
 		< $$< > $$@
 
-$(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf
+$(BUILD_PATH)/tests/eap/${1}-${2}.ok: $(BUILD_PATH)/tests/eap/${1}-${2}.conf | radiusd.pid
 	${Q}printf 'EAPOL_TEST %s' $$(notdir $$(patsubst %.ok,%,$$@))
 	${Q}if ! $$(CMD) -r 1 > $$(LOG) 2>&1; then \
 		echo " - " FAILED  - command failed; \
@@ -370,7 +393,7 @@ endif # there's no "prefix", so we don't run the full EAP tests
 
 EAPOL_OK_FILES := $(sort $(addprefix $(BUILD_PATH)/tests/eap/,$(patsubst %.conf,%.ok, $(notdir $(EAP_TLS_FILES) $(EAP_FILES)))) $(EAP_TLS_VERSION_FILES))
 
-tests.eap: $(EAPOL_OK_FILES) | radiusd.kill radiusd.pid
+tests.eap: $(EAPOL_OK_FILES) | radiusd.pid
 else
 tests.eap:
 	${Q}echo "EAP tests are disabled"
@@ -381,7 +404,7 @@ endif # we have eapol_test built
 # run the tests (ignoring any failures)
 # kill the server
 # remove the changes to raddb/
-tests.runtests:  test.conf | radiusd.kill radiusd.pid
+tests.runtests:  test.conf | radiusd.pid
 	${Q}chmod a+x runtests.sh
 	${Q}BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 
