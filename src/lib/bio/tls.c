@@ -79,6 +79,7 @@ struct fr_bio_tls_s {
 	bool			client_cert;		//!< For a server, require a client certificate.
 
 	bool			write_wait;		//!< The write event of the fd is active.
+	bool			read_paused;		//!< The read event of the fd paused
 
 	void			*packet_ctx;		//!< Passed to the next bio when writing encrypted records.
 							///< Set only while `fr_bio_tls_write()` runs.  Records which
@@ -146,6 +147,7 @@ static void fr_bio_tls_events_delete(fr_bio_tls_t *my)
 	(void) fr_event_fd_delete(my->el, my->fd, FR_EVENT_FILTER_IO);
 	my->events = false;
 	my->write_wait = false;
+	my->read_paused = false;
 }
 
 /** Tell the next bio that it can write again
@@ -738,19 +740,63 @@ static ssize_t fr_bio_tls_write_wait_connected(UNUSED fr_bio_t *bio, UNUSED void
 	return fr_bio_error(IO_WOULD_BLOCK);
 }
 
+static fr_event_update_t const pause_read[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+	{ 0 }
+};
+
+static fr_event_update_t const resume_read[] = {
+	FR_EVENT_RESUME(fr_event_io_func_t, read),
+	{ 0 }
+};
+
+/** Resume reading from the connection
+ *
+ *  If a connection has been paused because of a full buffer, then mark it as resumable.
+ */
+static void fr_bio_tls_conn_recv_resume(fr_tls_connection_t *conn)
+{
+	fr_bio_tls_t *my = talloc_get_type_abort(conn->uctx, fr_bio_tls_t);
+
+	if (!my->events || !my->read_paused) return;
+
+	if (fr_event_filter_update(my->el, my->fd, FR_EVENT_FILTER_IO, resume_read) < 0) {
+		fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
+		return;
+	}
+
+	my->read_paused = false;
+}
+
 /** A record arrived on the fd, so hand the record to the TLS connection
  *
  *  Reading the fd is all this function does.  Everything the record means to TLS is `fr_tls_connection_recv()`'s
  *  business.
+ *
+ *  The upper bound on read is limited by the amount of room available in the buffer.  If there's no room in
+ *  the buffer, then pause the reads so that the event loop doesn't keep notifying is that data is available.
  */
 static void fr_bio_tls_el_read(UNUSED fr_event_list_t *el, UNUSED int fd, UNUSED int flags, void *uctx)
 {
 	fr_bio_tls_t	*my = talloc_get_type_abort(uctx, fr_bio_tls_t);
 	fr_bio_t	*next = fr_bio_next(&my->bio);
+	size_t		room;
 	ssize_t		slen;
 
+	room = fr_tls_connection_recv_room(my->conn);
+	if (room == 0) {
+		if (fr_event_filter_update(my->el, my->fd, FR_EVENT_FILTER_IO, pause_read) < 0) {
+			fr_tls_connection_failed(my->conn, TLS_CONNECTION_FAIL_APPLICATION);
+			return;
+		}
+
+		my->read_paused = true;
+		return;
+	}
+	if (room > sizeof(my->buffer)) room = sizeof(my->buffer);
+
 	while (true) {
-		slen = next->read(next, NULL, my->buffer, sizeof(my->buffer));
+		slen = next->read(next, NULL, my->buffer, room);
 		if (slen > 0) {
 			fr_tls_connection_recv(my->conn, my->buffer, (size_t) slen);
 			return;
@@ -1060,6 +1106,7 @@ fr_bio_tls_t *fr_bio_tls_alloc(request_t *request, fr_bio_t *next, SSL_CTX *ssl_
 	}
 	my->conn->uctx = my;
 	my->conn->client = client;
+	my->conn->recv_resume = fr_bio_tls_conn_recv_resume;
 	my->conn->request = request;
 
 	my->bio.read = fr_bio_tls_read_wait;

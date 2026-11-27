@@ -950,6 +950,36 @@ void fr_tls_connection_wake(fr_tls_connection_t *conn)
 	tls_connection_request_wake(conn);
 }
 
+/** Return how much room there is in the read buffer.
+ *
+ * The `dirty_in` buffer is fixed size (once it's allocated).  There may be more data than that available via
+ * the FD.  So we only read what's available.  We want to be able to hand an entire TLS record to OpenSSL.
+ *
+ * When this function returns 0, the caller must stop reading the FD.  Once the buffer has been emptied, the
+ * FD is resumed, and the process can continue.
+ *
+ * A datagram either fits, or is is truncated.  For datagram connections, this function returns SIZE_MAX. The
+ * reader im fr_tls_connection_recv() then fails if the datagram is truncated.
+ *
+ * @param[in] conn	to check.
+ * @return
+ *	- 0 when `dirty_in` is full.  fr_tls_connection_process() calls `conn->recv_resume` once OpenSSL
+ *	  has read from `dirty_in`.
+ *	- the number of octets the caller can read.
+ */
+size_t fr_tls_connection_recv_room(fr_tls_connection_t *conn)
+{
+	fr_tls_session_t *tls_session = conn->tls_session;
+	size_t room;
+
+	if (tls_session->socket_type == SOCK_DGRAM) return SIZE_MAX;
+
+	room = fr_dbuff_extend_lowat(NULL, tls_session->dirty_in, tls_session->dirty_size);
+	if (room == 0) conn->recv_blocked = true;
+
+	return room;
+}
+
 /** Hand octets which arrived on the connection to OpenSSL.
  *
  * The caller reads from whatever transport the caller uses, and
@@ -967,7 +997,8 @@ void fr_tls_connection_wake(fr_tls_connection_t *conn)
  * We therefore append the received data to the buffer.  The
  * "into_openssl" buffer size is capped at FR_TLS_MAX_PACKET_SIZE, so
  * if a caller tries to overfill the buffer, this function marks the
- * connection as failed.
+ * connection as failed.  A stream caller avoids the failure by reading no
+ * more than fr_tls_connection_recv_room() returns.
  *
  * @todo - perhaps make the "into_ssl" dbuff extensable, but with
  * limits.  See tls_session_alloc() for caveats.
@@ -1089,6 +1120,16 @@ void fr_tls_connection_process(fr_tls_connection_t *conn)
 	 *	connection`.
 	 */
 	if (fr_tls_connection_write(conn) < 0) fr_tls_connection_failed(conn, TLS_CONNECTION_FAIL_APPLICATION);
+
+	/*
+	 *	If the reading is blocked, and the connection is OK, and there's room, then resume the
+	 *	connection.
+	 */
+	if (conn->recv_blocked && !conn->failed &&
+	    (fr_dbuff_extend_lowat(NULL, conn->tls_session->dirty_in, conn->tls_session->dirty_size) > 0)) {
+		conn->recv_blocked = false;
+		if (conn->recv_resume) conn->recv_resume(conn);
+	}
 
 	/*
 	 *	OpenSSL knows when it next wants attention, and the answer

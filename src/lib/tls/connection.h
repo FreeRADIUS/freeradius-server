@@ -189,6 +189,7 @@ struct fr_tls_connection_s {
 							///< complete the handshake.  The connection fails only
 							///< if the handshake reads that record and then
 							///< determines it needs another record.
+	bool			recv_blocked;		//!< `dirty_in` is full, and we're waiting for `recv_resume`.
 
 	void			*uctx;			//!< Context for the callback functions below.
 							///< The callbacks read `conn->uctx` rather than
@@ -205,6 +206,7 @@ struct fr_tls_connection_s {
 							//!< Write `size` octets at `data` to the
 							///< peer.  Returns <0 on failure, or the
 							///< amount of data written >=0.
+	void			(*recv_resume)(fr_tls_connection_t *conn); //!< called once `dirty_in` has room
 };
 
 fr_tls_connection_t *fr_tls_connection_alloc(TALLOC_CTX *ctx, fr_timer_list_t *tl,
@@ -222,6 +224,8 @@ void		fr_tls_connection_failed(fr_tls_connection_t *conn, fr_tls_connection_fail
 void		fr_tls_connection_eof(fr_tls_connection_t *conn);
 
 fr_tls_connection_io_state_t fr_tls_connection_io_error(fr_tls_connection_t *conn, ssize_t slen);
+
+size_t		fr_tls_connection_recv_room(fr_tls_connection_t *conn);
 
 void		fr_tls_connection_recv(fr_tls_connection_t *conn, uint8_t const *data, size_t data_len);
 

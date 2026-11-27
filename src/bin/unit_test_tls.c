@@ -300,6 +300,9 @@ typedef struct {
 	bool			write_blocked;		//!< True while the socket has no room for a
 							///< record and the write event is active, see
 							///< tls_connection_write_wait().
+	bool			read_paused;		//!< True while the read event is suspended, because
+							///< fr_tls_connection_recv_room() returned 0, see
+							///< _tls_connection_read().
 
 	unsigned char		*alpn;			//!< Protocol list built by -L, in the wire format
 							///< fr_tls_conf_t expects.  NULL means no ALPN.
@@ -662,20 +665,75 @@ static void _tls_connection_write(UNUSED fr_event_list_t *el, UNUSED int fd, UNU
 	fr_tls_connection_process(utt->conn);
 }
 
+static fr_event_update_t const pause_read[] = {
+	FR_EVENT_SUSPEND(fr_event_io_func_t, read),
+	{ 0 }
+};
+
+static fr_event_update_t const resume_read[] = {
+	FR_EVENT_RESUME(fr_event_io_func_t, read),
+	{ 0 }
+};
+
+/** OpenSSL has read from `dirty_in`, so start reading the socket again
+ *
+ * fr_tls_connection_process() calls this function only after
+ * fr_tls_connection_recv_room() returned 0, and _tls_connection_read()
+ * suspended the read event.
+ */
+static void tls_connection_recv_resume(fr_tls_connection_t *conn)
+{
+	unit_test_tls_t *utt = talloc_get_type_abort(conn->uctx, unit_test_tls_t);
+
+	if (!utt->ef || !utt->read_paused) return;
+
+	if (fr_event_filter_update(utt->el, utt->fd, FR_EVENT_FILTER_IO, resume_read) < 0) {
+		PERROR("Failed resuming the read event for the connection");
+		tls_request_failed(utt);
+		return;
+	}
+
+	utt->read_paused = false;
+	DEBUG3("Resumed reading from the connection");
+}
+
 /** A record arrived on the connection, so hand the record to the connection
  *
  * Reading the socket is all this program does here.  Everything the record
  * means to TLS is fr_tls_connection_recv()'s business.
+ *
+ * This function reads at most what fr_tls_connection_recv_room() returns.
+ * The rest of the data stays in the socket until OpenSSL has read from
+ * `dirty_in`.  A socket with unread data fires the read event on every pass
+ * of the event loop.  Because of that, when fr_tls_connection_recv_room()
+ * returns 0, this function suspends the read event.
+ * tls_connection_recv_resume() then resumes the read event.
  */
 static void _tls_connection_read(UNUSED fr_event_list_t *el, int fd, UNUSED int flags, void *uctx)
 {
 	unit_test_tls_t		*utt = talloc_get_type_abort(uctx, unit_test_tls_t);
 	uint8_t			buf[SSL3_RT_MAX_PLAIN_LENGTH];
+	size_t			room;
 	ssize_t			slen;
 
 	if (utt->done) return;
 
-	slen = read(fd, buf, sizeof(buf));
+	room = fr_tls_connection_recv_room(utt->conn);
+	if (room == 0) {
+		DEBUG3("No room for more data, waiting for OpenSSL to read what the connection holds");
+
+		if (fr_event_filter_update(utt->el, fd, FR_EVENT_FILTER_IO, pause_read) < 0) {
+			PERROR("Failed suspending the read event for the connection");
+			tls_request_failed(utt);
+			return;
+		}
+
+		utt->read_paused = true;
+		return;
+	}
+	if (room > sizeof(buf)) room = sizeof(buf);
+
+	slen = read(fd, buf, room);
 	if (slen <= 0) {
 		/*
 		 *	The connection records what happened, and ends itself
@@ -1480,6 +1538,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 						tls_request_close));
 	utt->conn->uctx = utt;
 	utt->conn->client = utt->client;
+	utt->conn->recv_resume = tls_connection_recv_resume;
 
 
 
@@ -1488,6 +1547,7 @@ static int tls_connection_run(unit_test_tls_t *utt)
 	utt->fd = -1;
 	utt->ef = NULL;
 	utt->write_blocked = false;
+	utt->read_paused = false;
 
 	/*
 	 *	Get a connection, one way or the other.
