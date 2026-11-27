@@ -144,18 +144,5 @@
 *** xref:vendors/huawei.adoc[Huawei]
 *** xref:vendors/proxim.adoc[ProxIM]
 
-** xref:optimization/index.adoc[Optimisation]
-*** xref:optimization/auditing.adoc[Auditing]
-*** xref:optimization/monitoring/index.adoc[Monitoring]
-**** xref:optimization/monitoring/logging_examples.adoc[Log Examples]
-**** xref:optimization/monitoring/statistics.adoc[Server Statistics]
-*** xref:tuning/performance-testing.adoc[Performance Testing]
-*** xref:optimization/tools/index.adoc[Tools]
-**** xref:optimization/tools/radclient.adoc[Radclient]
-**** xref:optimization/tools/radmin.adoc[Radmin]
-**** xref:optimization/tools/radsniff.adoc[Radsniff]
-**** xref:optimization/tools/raduat.adoc[Raduat]
-*** xref:tuning/tuning_guide.adoc[Tuning Guide]
-
 // Copyright (C) 2026 Network RADIUS SAS.  Licenced under CC-by-NC 4.0.
 // This documentation was developed by Network RADIUS SAS.
