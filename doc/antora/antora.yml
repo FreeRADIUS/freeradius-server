@@ -14,5 +14,6 @@ nav:
 - modules/reference/nav.adoc
 - modules/troubleshooting/nav.adoc
 - modules/howto/nav.adoc
+- modules/upgrade/nav.adoc
 - modules/tutorials/nav.adoc
 - modules/developers/nav.adoc

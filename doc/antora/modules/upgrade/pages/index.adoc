@@ -34,7 +34,7 @@ convert the `listen` sections, followed by the `server` sections.
 == New Attributes Names
 
 All of the attribute names used in v3 have been changed in v4.  Please
-see the xref:howto:upgrade/attribute_names.adoc[Attribute Names] for
+see the xref:upgrade:attribute_names.adoc[Attribute Names] for
 more information.  This change was necessary in order to support the
 new "grouped" attributes, which are required for DHCPv6 and other
 protocols.
