@@ -3,7 +3,7 @@ FreeRADIUS 3.2.12 Thu 26 Nov 2026 12:00:00 UTC urgency=low
 
 	Feature improvements
 	Bug fixes
-	* Fix "dedup_key" configuration of the EAP module now works.
+	* "dedup_key" configuration of the EAP module now works
 	* Fix rlm_python now sets the values of attributes, even in non-debug mode.
 	* Fix memory corruption and crashes in the detail module with
 	  "locking = no" (the default), when it fails to open or create its
@@ -17,6 +17,8 @@ FreeRADIUS 3.2.12 Thu 26 Nov 2026 12:00:00 UTC urgency=low
 	  hangs or fails.  See the "pool" section of mods-available/sql.
 
 	Bug fixes
+	* Set default `buffer_size` for incoming RadSec connections.
+	  Fixes #6017.
 
 FreeRADIUS 3.2.11 Thu 26 Nov 2026 12:00:00 UTC urgency=high
 	Configuration changes
