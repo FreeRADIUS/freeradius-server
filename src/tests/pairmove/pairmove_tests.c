@@ -135,6 +135,7 @@ static struct {
 	{ "+=", T_OP_ADD },
 	{ "-=", T_OP_SUB },
 	{ "==", T_OP_CMP_EQ },
+	{ "!=", T_OP_NE },
 	{ "<=", T_OP_LE },
 	{ ">=", T_OP_GE },
 	{ "!*", T_OP_CMP_FALSE },
@@ -492,6 +493,47 @@ static void test_op_cmp_eq(void)
 		{ "== no matching value",	"s0=a",		"s0==b",	"" },
 		{ "== some matching",		"s0=a s0=b s0=a", "s0==a",	"s0=a s0=a" },
 		{ "== keeps others",		"s1=x s0=b",	"s0==a",	"s1=x" },
+	};
+
+	pairmove_run_cases(cases, NUM_ELEMENTS(cases));
+}
+
+/*
+ *	The '!=' operator is the opposite of '=='.  It deletes every instance of
+ *	the attribute that has the value of the `from` pair, and keeps every
+ *	instance that has a different value.  The operator does not add the
+ *	attribute.
+ */
+static void test_op_ne(void)
+{
+	static pairmove_case_t const cases[] = {
+		{ "!= from empty",		"",		"s0!=a",	"" },
+		{ "!= absent attribute",	"s1=x",		"s0!=a",	"s1=x" },
+		{ "!= no matching value",	"s0=a",		"s0!=b",	"s0=a" },
+		{ "!= matching value",		"s0=a",		"s0!=a",	"" },
+		{ "!= all matching values",	"s0=a s0=b s0=a", "s0!=a",	"s0=b" },
+		{ "!= some matching",		"s0=a s0=b s0=c", "s0!=b",	"s0=a s0=c" },
+		{ "!= keeps others",		"s1=x s0=a i0=1", "s0!=a",	"s1=x i0=1" },
+		{ "!= integer",			"i0=1 i0=2",	"i0!=2",	"i0=1" },
+		{ "!= twice",			"s0=a s0=b s0=c", "s0!=a s0!=c", "s0=b" },
+		{ "!= with == leaves nothing",	"s0=a s0=b",	"s0==a s0!=a",	"" },
+	};
+
+	pairmove_run_cases(cases, NUM_ELEMENTS(cases));
+}
+
+/*
+ *	The '!=' operator applies only to the pairs which were in the `to` list
+ *	before the merge, as the other operators do.  It does not see a pair which
+ *	an earlier operator replaced or added.
+ */
+static void test_op_ne_original_list_only(void)
+{
+	static pairmove_case_t const cases[] = {
+		{ "!= after := replaces",	"s0=a",		"s0:=b s0!=b",	"s0=b" },
+		{ "!= after +=",		"s0=a",		"s0+=b s0!=b",	"s0=a s0=b" },
+		{ "!= deletes, += is kept",	"s0=a",		"s0+=b s0!=a",	"s0=b" },
+		{ "!= before +=",		"s0=a",		"s0!=a s0+=a",	"s0=a" },
 	};
 
 	pairmove_run_cases(cases, NUM_ELEMENTS(cases));
@@ -1080,6 +1122,8 @@ TEST_LIST = {
 	{ "op_sub",				test_op_sub },
 	{ "op_cmp_false",			test_op_cmp_false },
 	{ "op_cmp_eq",				test_op_cmp_eq },
+	{ "op_ne",				test_op_ne },
+	{ "op_ne_original_list_only",		test_op_ne_original_list_only },
 	{ "op_le_ge",				test_op_le_ge },
 	{ "op_le_ge_prefix",			test_op_le_ge_prefix },
 	{ "original_list_only",			test_original_list_only },

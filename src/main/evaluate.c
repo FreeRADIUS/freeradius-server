@@ -1021,13 +1021,16 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 
 		case T_OP_SUB:
 		case T_OP_CMP_EQ:
+		case T_OP_NE:
 			if (!edited) goto do_remove;
 
 			/*
-			 *	"-=" removes every unedited instance of the
-			 *	attribute which has the same value.  "=="
+			 *	"-=" and "!=" remove every unedited instance of
+			 *	the attribute which has the same value.  "=="
 			 *	does the opposite, and removes every one which
 			 *	has a different value.
+			 *
+			 *	None of these operators add the pair.
 			 */
 			op = vp->op;
 			vp->op = T_OP_CMP_EQ;
@@ -1035,7 +1038,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from, bool d
 			LOOP {
 				int rcode = radius_compare_vps(NULL, vp, old);
 
-				if ((rcode == 0) == (op == T_OP_SUB)) {
+				if ((rcode == 0) == (op != T_OP_CMP_EQ)) {
 					edited[j] = NULL;
 					relink = true;
 				}
