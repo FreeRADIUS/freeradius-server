@@ -115,6 +115,9 @@ view.
 NOTE: When setting `auto_chain = no`, the server `chain {}` section(s)
 below MUST include the full certificate chain.
 
+max_cert_list:: The maximum size of the certificate chain that OpenSSL
+will accept.
+
 chain:: A chain of certificates to present to the client
 
 Multiple chain sections can be specified to allow different chains for
@@ -894,9 +897,14 @@ virtual_server:: The virtual server used for "inner" authentication.
 The inner tunneled request can be sent through a virtual server which
 verifies the inner credentials.
 
-If this entry is commented out, the inner tunneled request will be
-sent through the virtual server which processed the outer request.
-This configuration is NOT RECOMMENDED.
+resume_virtual_server:: The virtual server used for "inner"
+authentication on resumed sessions.
+
+If not set, then the virtual server set above will be used.
+
+Depending on what has been stored in the session cache, resumed
+sessions may not have the same attributes available e.g. typically
+User-Password would not be cached.
 
 include_length:: Whether we include a length field in the TLS header.
 
@@ -979,9 +987,14 @@ virtual_server:: The virtual server used for "inner" authentication.
 The inner tunneled request can be sent through a virtual server which
 verifies the inner credentials.
 
-If this entry is commented out, the inner tunneled request will be
-sent through the virtual server which processed the outer request.
-This configuration is NOT RECOMMENDED.
+resume_virtual_server:: The virtual server used for "inner"
+authentication on resumed sessions.
+
+If not set, then the virtual server set above will be used.
+
+Depending on what has been stored in the session cache, resumed
+sessions may not have the same attributes available e.g. typically
+User-Password would not be cached.
 
 require_client_cert:: Whether we require a client certificate.
 
@@ -1242,6 +1255,7 @@ TODO
 @templates tls-common {
 #	virtual_server = tls-session
 #	auto_chain = no
+#	max_cert_list = 102400
 	chain rsa {
 #		format = "PEM"
 		certificate_file = ${certdir}/rsa/server.pem
@@ -1278,7 +1292,7 @@ TODO
 #		attribute_mode = client-and-issuer
 	}
 	session {
-#		mode = auto
+		mode = disabled
 #		name = "%{EAP-Type}%interpreter('server')"
 #		lifetime = 86400
 #		require_extended_master_secret = yes
@@ -1327,6 +1341,7 @@ eap {
 			$template tls-common
 		}
 		virtual_server = "inner-tunnel"
+#		resume_virtual_server = "resume-inner-tunnel"
 #		include_length = yes
 #		require_client_cert = yes
 	}
@@ -1336,6 +1351,7 @@ eap {
 		}
 		default_eap_type = mschapv2
 		virtual_server = "inner-tunnel"
+#		resume_virtual_server = "resume-inner-tunnel"
 #		require_client_cert = yes
 	}
 	mschapv2 {

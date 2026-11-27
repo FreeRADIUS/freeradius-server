@@ -131,6 +131,17 @@ EAPOL_CMD = \
 	$(EAPOL_TEST_OPTS)
 
 #
+#  The `tls-big-client-cert` test needs a client certificate of more than
+#  65000 octets.  Because `big_client_cert.sh` signs the certificate with the
+#  test certificate authority (CA), the CA files must exist before the script
+#  runs.
+#
+$(OUTPUT)/big_client_cert/client.pem: $(DIR)/big_client_cert.sh | $(GENERATED_CERT_FILES)
+	${Q}$< $(dir $@)
+
+$(OUTPUT)/tls-big-client-cert.ok: $(OUTPUT)/big_client_cert/client.pem
+
+#
 #  Run EAP tests.
 #
 #  A test conf whose filename starts with `fail-` is a negative scenario:

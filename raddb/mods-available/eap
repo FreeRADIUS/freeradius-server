@@ -133,6 +133,12 @@
 #	auto_chain = no
 
 	#
+	#  max_cert_list:: The maximum size of the certificate chain
+	#  that OpenSSL will accept.
+	#
+#	max_cert_list = 102400
+
+	#
 	#  chain:: A chain of certificates to present to the client
 	#
 	#  Multiple chain sections can be specified to allow different

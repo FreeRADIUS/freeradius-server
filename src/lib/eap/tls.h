@@ -98,7 +98,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  * The server reassembles the fragments in `dirty_in` before passing the data to OpenSSL.  We therefore limit
  * the amount of memory that a peer can use in one session.
  */
-#define FR_TLS_EAP_MESSAGE_LENGTH_MAX	SSL_MAX_CERT_LIST_DEFAULT
+#define FR_TLS_EAP_MESSAGE_LENGTH_MAX(_conf)	((size_t) (_conf)->max_cert_list)
 
 /** Maximum number of round trips for an EAP session which uses TLS
  *
@@ -112,7 +112,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  *  @todo - EAP_SESSION_MAX_ROUNDS is arguably wrong here.  We want to allocate a round or two for the
  *  EAP-Request/Identity, ClientHello, and some inner-tunnel data.  That's likely less than 50.
  */
-#define FR_TLS_EAP_MAX_ROUNDS		(FR_TLS_EAP_MESSAGE_LENGTH_MAX / 1020) + EAP_SESSION_MAX_ROUNDS)
+#define FR_TLS_EAP_MAX_ROUNDS(_conf)	((int) (FR_TLS_EAP_MESSAGE_LENGTH_MAX(_conf) / 1020) + EAP_SESSION_MAX_ROUNDS)
 
 typedef enum : uint8_t {
 	EAP_TLS_INVALID = 0,	  			//!< Invalid, don't reply.

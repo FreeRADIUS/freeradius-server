@@ -717,10 +717,10 @@ static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_se
 		 *	Because `dirty_in` holds the whole reassembled message and grows to at most
 		 *	`FR_TLS_EAP_MESSAGE_LENGTH_MAX`, reject a larger message here.
 		 */
-		if (total_len > FR_TLS_EAP_MESSAGE_LENGTH_MAX) {
+		if (total_len > FR_TLS_EAP_MESSAGE_LENGTH_MAX(eap_tls_session->tls_session->conf)) {
 			REDEBUG("Reassembled TLS record will be %zu bytes, "
-				"greater than our maximum record size (%u bytes)",
-				total_len, (unsigned int) FR_TLS_EAP_MESSAGE_LENGTH_MAX);
+				"greater than our maximum record size (%zu bytes)",
+				total_len, FR_TLS_EAP_MESSAGE_LENGTH_MAX(eap_tls_session->tls_session->conf));
 			return EAP_TLS_INVALID;
 		}
 
@@ -1293,12 +1293,14 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	 *	records before handing them to OpenSSL.  As a result, we have to be avle to grow the
 	 *	`dirty_in` buffer to the maximum allowed length.
 	 */
-	fr_tls_bio_dbuff_max_set(tls_session->into_ssl, FR_TLS_EAP_MESSAGE_LENGTH_MAX);
+	if (FR_TLS_EAP_MESSAGE_LENGTH_MAX(conf) > tls_session->dirty_size) {
+		fr_tls_bio_dbuff_max_set(tls_session->into_ssl, FR_TLS_EAP_MESSAGE_LENGTH_MAX(conf));
+	}
 
 	/*
 	 *	TLS-based methods need more rounds than other methods, so we bump it up here.
 	 */
-	eap_session->max_rounds = FR_TLS_EAP_MAX_ROUNDS;
+	eap_session->max_rounds = FR_TLS_EAP_MAX_ROUNDS(conf);
 
 	/*
 	 *	EAP-TTLS cannot reliably use stateless session tickets with TLS 1.3.
