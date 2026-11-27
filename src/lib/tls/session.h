@@ -256,9 +256,9 @@ struct fr_tls_session_s {
 	fr_dbuff_t		*dirty_out;			//!< Encrypted data, ready to send.  The consumer
 								///< cursor of from_ssl, which the caller drains.
 	size_t			clean_size;			//!< Size of clean_in and clean_out.
-	size_t			dirty_size;			//!< Size of the into_ssl buffer, and the initial
-								///< size of the from_ssl buffer.
-
+	size_t			dirty_size;			//!< Initial size of the into_ssl and from_ssl buffers,
+								///< and the default maximum size of into_ssl.
+								
 	int			last_ret;			//!< Last result returned by SSL_read().
 
 	uint32_t		rounds;				//!< Handshake round trips.

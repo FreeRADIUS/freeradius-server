@@ -2683,8 +2683,9 @@ static fr_tls_session_t *tls_session_alloc(TALLOC_CTX *ctx, request_t *request, 
 	 *	be large enough to hold an entire TLS record.  See
 	 *	tls_session_set_buffer_sizes().
 	 *
-	 *	init and max are the same, so the buffer is allocated
-	 *	once and never moves.
+	 *	Init and max are the same, so the buffer is allocated
+	 *	once, and does not grow unless a caller explicitly
+	 *	raises it.  See fr_tls_bio_dbuff_max_set()`
 	 *
 	 *	We don't limit the data coming out of from_ssl,
 	 *	because OpenSSL decides how much it writes.  Multiple
