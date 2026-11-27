@@ -51,6 +51,7 @@ static int tls_conf_parse_client_cache_mode(TALLOC_CTX *ctx, void *out, void *pa
 static int tls_virtual_server_cf_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_padding_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
+static int tls_max_cert_list_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_ticket_lifetime_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 static int tls_chain_private_key_file_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule);
 
@@ -213,6 +214,7 @@ conf_parser_t fr_tls_server_config[] = {
 	{ FR_CONF_OFFSET_FLAGS("dh_file", CONF_FLAG_FILE_READABLE, fr_tls_conf_t, dh_file) },
 	{ FR_CONF_OFFSET("fragment_size", fr_tls_conf_t, fragment_size), .func = tls_fragment_size_parse, .dflt = "1024" },
 	{ FR_CONF_OFFSET("buffer_size", fr_tls_conf_t, buffer_size), .dflt = "16384" },
+	{ FR_CONF_OFFSET("max_cert_list", fr_tls_conf_t, max_cert_list), .func = tls_max_cert_list_parse, .dflt = "102400" },
 	{ FR_CONF_OFFSET("padding", fr_tls_conf_t, padding_block_size), .func = tls_padding_parse },
 
 	{ FR_CONF_OFFSET("disable_single_dh_use", fr_tls_conf_t, disable_single_dh_use) },
@@ -282,6 +284,7 @@ conf_parser_t fr_tls_client_config[] = {
 	{ FR_CONF_OFFSET("random_file", fr_tls_conf_t, random_file) },
 	{ FR_CONF_OFFSET("fragment_size", fr_tls_conf_t, fragment_size), .func = tls_fragment_size_parse, .dflt = "1024" },
 	{ FR_CONF_OFFSET("buffer_size", fr_tls_conf_t, buffer_size), .dflt = "16384" },
+	{ FR_CONF_OFFSET("max_cert_list", fr_tls_conf_t, max_cert_list), .func = tls_max_cert_list_parse, .dflt = "102400" },
 
 	{ FR_CONF_OFFSET("cipher_list", fr_tls_conf_t, cipher_list) },
 	{ FR_CONF_OFFSET("cipher_suites", fr_tls_conf_t, cipher_suites) },
@@ -527,6 +530,32 @@ static int tls_fragment_size_parse(TALLOC_CTX *ctx, void *out, void *parent, CON
 		cf_log_warn(ci, "Ignoring \"fragment_size = %u\", forcing to \"fragment_size = %u\"",
 			    *fragment_size, (unsigned int)SSL3_RT_MAX_PLAIN_LENGTH);
 		*fragment_size = SSL3_RT_MAX_PLAIN_LENGTH;
+	}
+
+	return 0;
+}
+
+/** Parse `max_cert_list`, and limit the value to `FR_TLS_MAX_CERT_LIST_MIN` .. `FR_TLS_MAX_CERT_LIST_MAX`
+ *
+ * A value below `FR_TLS_MAX_CERT_LIST_MIN` is raised to `FR_TLS_MAX_CERT_LIST_MIN`.
+ * A value above `FR_TLS_MAX_CERT_LIST_MAX` is lowered to `FR_TLS_MAX_CERT_LIST_MAX`.
+ * Either change logs a warning.
+ */
+static int tls_max_cert_list_parse(TALLOC_CTX *ctx, void *out, void *parent, CONF_ITEM *ci, conf_parser_t const *rule)
+{
+	uint32_t *max_cert_list = out;
+
+	if (cf_pair_parse_value(ctx, out, parent, ci, rule) < 0) return -1;
+
+	if (*max_cert_list < FR_TLS_MAX_CERT_LIST_MIN) {
+		cf_log_warn(ci, "Configuration \"max_cert_list = %u\" is too small, setting to \"max_cert_list = %u\"",
+			    *max_cert_list, (unsigned int) FR_TLS_MAX_CERT_LIST_MIN);
+		*max_cert_list = FR_TLS_MAX_CERT_LIST_MIN;
+	}
+	if (*max_cert_list > FR_TLS_MAX_CERT_LIST_MAX) {
+		cf_log_warn(ci, "Configuration \"max_cert_list = %u\" is too large, setting to \"max_cert_list = %u\"",
+			    *max_cert_list, (unsigned int) FR_TLS_MAX_CERT_LIST_MAX);
+		*max_cert_list = FR_TLS_MAX_CERT_LIST_MAX;
 	}
 
 	return 0;

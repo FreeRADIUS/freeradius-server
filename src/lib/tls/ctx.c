@@ -852,6 +852,11 @@ post_ca:
 	SSL_CTX_set_info_callback(ctx, fr_tls_session_info_cb);
 
 	/*
+	 *	Set the maximum size of a certificate that OpenSSL will accept.
+	 */
+	SSL_CTX_set_max_cert_list(ctx, conf->max_cert_list);
+
+	/*
 	 *	SSL_ctx_set_verify is now called in the session
 	 *	alloc functions so they can set custom behaviour
 	 *	depending on the code area the SSL * will be used

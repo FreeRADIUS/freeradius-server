@@ -107,6 +107,15 @@ typedef enum {
  */
 #define FR_TLS_MAX_SESSION_LIFETIME (7 * 86400)
 
+/** Bounds for `max_cert_list`
+ *
+ * `max_cert_list` is the size of the largest TLS Certificate handshake message that OpenSSL will accept from
+ * the peer.  The Certificate message holds the whole certificate chain.  The EAP code also uses
+ * `max_cert_list` as the limit on a reassembled EAP-TLS messages.
+ */
+#define FR_TLS_MAX_CERT_LIST_MIN (16 * 1024)
+#define FR_TLS_MAX_CERT_LIST_MAX SSL_MAX_CERT_LIST_DEFAULT
+
 /** TLS 1.3 allows for padding, but it needs to be limited.
  *
  * Records will be padded to a multiple of the block size.  It doesn't
@@ -199,6 +208,8 @@ struct fr_tls_conf_s {
 
 	uint32_t	fragment_size;			//!< Maximum record fragment, or record size.
 	uint32_t	buffer_size;			//!< Size of the "clean" dbuffs for each session.
+	uint32_t	max_cert_list;			//!< Largest Certificate handshake message that we
+							///< accept from the peer.
 	uint32_t	padding_block_size;		//!< for TLS 1.3, pad blocks to multiple of this size.
 							///< Zero means no padding.
 
