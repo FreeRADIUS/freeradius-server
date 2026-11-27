@@ -74,6 +74,8 @@ void		fr_tls_bio_dbuff_reset(fr_tls_bio_dbuff_t *bd);
 
 void		fr_tls_bio_dbuff_clear(fr_tls_bio_dbuff_t *bd);
 
+void		fr_tls_bio_dbuff_max_set(fr_tls_bio_dbuff_t *bd, size_t max);
+
 BIO		*fr_tls_bio_dbuff_alloc(fr_tls_bio_dbuff_t **out, TALLOC_CTX *bio_ctx, TALLOC_CTX *buff_ctx,
 					 size_t init, size_t max, bool free_buff);
 

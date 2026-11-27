@@ -404,6 +404,21 @@ fr_dbuff_t *fr_tls_bio_dbuff_in(fr_tls_bio_dbuff_t *bd)
 	return &bd->dbuff_in;
 }
 
+/** Raise the maximum size of the buffer
+ *
+ * The buffer changes size later, and only if needed.
+ *
+ * @param[in] bd	to change.  The buffer must already have a maximum size.
+ * @param[in] max	the new maximum size.  Must not be smaller than the current maximum.
+ */
+void fr_tls_bio_dbuff_max_set(fr_tls_bio_dbuff_t *bd, size_t max)
+{
+	fr_assert(bd->tctx.max != 0);
+	fr_assert(max >= bd->tctx.max);
+
+	bd->tctx.max = max;
+}
+
 /** Allocate a new BIO/talloc buffer
  *
  * @param[out] out	Where to write a pointer to the #fr_tls_bio_dbuff_t.
