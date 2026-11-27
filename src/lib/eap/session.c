@@ -112,6 +112,7 @@ static eap_session_t *eap_session_alloc(request_t *request)
 	}
 	eap_session->request = request;
 	eap_session->updated = request->packet->timestamp;
+	eap_session->max_rounds = EAP_SESSION_MAX_ROUNDS;
 
 	talloc_set_destructor(eap_session, _eap_session_free);
 
@@ -446,8 +447,8 @@ eap_session_t *eap_session_continue(void const *instance, eap_packet_raw_t **eap
 
 		(void) talloc_get_type_abort(eap_session, eap_session_t);
 		eap_session->rounds++;
-		if (eap_session->rounds >= 50) {
-			RERROR("Failing EAP session due to too many round trips");
+		if (eap_session->rounds >= eap_session->max_rounds) {
+			RERROR("Failing EAP session due to too many round trips (limit %d)", eap_session->max_rounds);
 			goto error;
 		}
 

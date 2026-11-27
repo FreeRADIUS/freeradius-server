@@ -93,6 +93,27 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define FR_TLS_EAP_BUFFER_SIZE_MIN	(2048)
 #define FR_TLS_EAP_BUFFER_SIZE_MAX	(65536)
 
+/** The largest TLS message the peer can send in one set of EAP-TLS fragments
+ *
+ * The server reassembles the fragments in `dirty_in` before passing the data to OpenSSL.  We therefore limit
+ * the amount of memory that a peer can use in one session.
+ */
+#define FR_TLS_EAP_MESSAGE_LENGTH_MAX	SSL_MAX_CERT_LIST_DEFAULT
+
+/** Maximum number of round trips for an EAP session which uses TLS
+ *
+ *  EAP splits the packets into fragments, of at least 1020 bytes (RFC 3748, Section 3.1, item 4.  Some
+ *  fragments may be larger, but we can't be sure.
+ *
+ *  @todo - we arguably can look at the certificates on disk, and figure out how large they are.  We also want
+ *  to have a different number of rounds if a client certificate is sent, as that adds more data.  We also
+ *  want to bump up the rounds when EAP-TLS is done inside of another EAP method.
+ *
+ *  @todo - EAP_SESSION_MAX_ROUNDS is arguably wrong here.  We want to allocate a round or two for the
+ *  EAP-Request/Identity, ClientHello, and some inner-tunnel data.  That's likely less than 50.
+ */
+#define FR_TLS_EAP_MAX_ROUNDS		(FR_TLS_EAP_MESSAGE_LENGTH_MAX / 1020) + EAP_SESSION_MAX_ROUNDS)
+
 typedef enum : uint8_t {
 	EAP_TLS_INVALID = 0,	  			//!< Invalid, don't reply.
 	EAP_TLS_ESTABLISHED,       			//!< Session established, send success (or start phase2).

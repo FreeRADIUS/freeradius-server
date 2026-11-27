@@ -1,0 +1,10 @@
+#
+#  EAP-TLS method for the `tls-big-client-cert` test.  The client
+#  certificate is more than 65000 octets.
+#
+type = tls
+tls {
+	tls {
+		$template tls-common
+	}
+}

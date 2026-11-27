@@ -29,6 +29,12 @@
 
 typedef struct eap_session_s eap_session_t;
 
+/** Default maximum number of round trips for any EAP session
+ *
+ * eap_tls_session_init() raises the limit for EAP methods which use TLS.
+ */
+#define EAP_SESSION_MAX_ROUNDS		(50)
+
 #include "compose.h"
 #include "types.h"
 
@@ -65,6 +71,7 @@ struct eap_session_s {
 	module_method_t	process;			//!< Callback that should be used to process the next round.
 							///< Usually set to the process function of an EAP submodule.
 	int		rounds;				//!< How many roundtrips have occurred this session.
+	int		max_rounds;			//!< EAP fails after this limit.  TLS methods raise it to 100.
 
 	fr_time_t	updated;			//!< The last time we received a packet for this EAP session.
 

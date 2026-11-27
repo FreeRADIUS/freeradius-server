@@ -705,12 +705,8 @@ static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_se
 	if (TLS_LENGTH_INCLUDED(eap_tls_data->flags)) {
 		size_t total_len;
 
-		if (eap_tls_data->data[0] || eap_tls_data->data[1]) {
-			REDEBUG("TLS record length is > 65536");
-			return EAP_TLS_INVALID;
-		}
-
-		total_len = eap_tls_data->data[2] * 256 | eap_tls_data->data[3];
+		total_len = ((size_t) eap_tls_data->data[0] << 24) | ((size_t) eap_tls_data->data[1] << 16) |
+			    ((size_t) eap_tls_data->data[2] << 8) | eap_tls_data->data[3];
 		if (frag_len > total_len) {
 			REDEBUG("TLS fragment length (%zu bytes) greater than TLS record length (%zu bytes)",
 				frag_len, total_len);
@@ -718,12 +714,13 @@ static eap_tls_status_t eap_tls_verify(request_t *request, eap_session_t *eap_se
 		}
 
 		/*
-		 *	The reassembled message goes into the into_ssl buffer, which has a fixed size.
+		 *	Because `dirty_in` holds the whole reassembled message and grows to at most
+		 *	`FR_TLS_EAP_MESSAGE_LENGTH_MAX`, reject a larger message here.
 		 */
-		if (total_len > eap_tls_session->tls_session->dirty_size) {
+		if (total_len > FR_TLS_EAP_MESSAGE_LENGTH_MAX) {
 			REDEBUG("Reassembled TLS record will be %zu bytes, "
-				"greater than our maximum record size (%zu bytes)",
-				total_len, eap_tls_session->tls_session->dirty_size);
+				"greater than our maximum record size (%u bytes)",
+				total_len, (unsigned int) FR_TLS_EAP_MESSAGE_LENGTH_MAX);
 			return EAP_TLS_INVALID;
 		}
 
@@ -1290,6 +1287,18 @@ eap_tls_session_t *eap_tls_session_init(request_t *request, eap_session_t *eap_s
 	eap_tls_session->tls_session = tls_session = fr_tls_session_alloc_server(eap_tls_session, ssl_ctx,
 										 request, client_cert);
 	if (unlikely(!tls_session)) return NULL;
+
+	/*
+	 *	A TLS message from the peer can span multiple TLS records.  We have to re-assemble the
+	 *	records before handing them to OpenSSL.  As a result, we have to be avle to grow the
+	 *	`dirty_in` buffer to the maximum allowed length.
+	 */
+	fr_tls_bio_dbuff_max_set(tls_session->into_ssl, FR_TLS_EAP_MESSAGE_LENGTH_MAX);
+
+	/*
+	 *	TLS-based methods need more rounds than other methods, so we bump it up here.
+	 */
+	eap_session->max_rounds = FR_TLS_EAP_MAX_ROUNDS;
 
 	/*
 	 *	EAP-TTLS cannot reliably use stateless session tickets with TLS 1.3.
