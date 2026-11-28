@@ -26,11 +26,18 @@ ATTRIBUTE	Extreme-VM-VPP-Name			214	string
 ATTRIBUTE	Extreme-VM-IP-Addr			215	ipaddr
 ATTRIBUTE	Extreme-VM-VLAN-ID			216	integer
 ATTRIBUTE	Extreme-VM-VR-Name			217	string
+ATTRIBUTE	Extreme-Dynamic-MHSA			250	integer
+ATTRIBUTE	Extreme-Dynamic-ACL			251	string
+ATTRIBUTE	Extreme-Dynamic-Config			252	string
+ATTRIBUTE	Extreme-Dynamic-Client-Assignments	253	string
 
 VALUE	Extreme-CLI-Authorization	Disabled		0
 VALUE	Extreme-CLI-Authorization	Enabled			1
 
 VALUE	Extreme-Netlogin-Only		Disabled		0
 VALUE	Extreme-Netlogin-Only		Enabled			1
+
+VALUE	Extreme-Dynamic-MHSA		Disabled		0
+VALUE	Extreme-Dynamic-MHSA		Enabled			1
 
 END-VENDOR	Extreme
